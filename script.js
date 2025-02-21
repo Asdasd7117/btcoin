@@ -45,7 +45,7 @@ async function checkWhaleActivity() {
             if (!savedTime) {
                 localStorage.setItem(symbol, now);
             }
-            showAlert(symbol, `🔥 انخفاض ${priceChange}% وتجميع الحيتان!`);
+            showAlert(symbol, `🔥 ${symbol} انخفاض ${priceChange}% وتجميع الحيتان!`);
         } else if (savedTime && now - savedTime < 86400000) {
             showAlert(symbol, `⚠️ انتباه! الحيتان تتراجع من ${symbol}`);
         }
