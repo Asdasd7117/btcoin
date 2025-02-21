@@ -37,22 +37,30 @@ async function checkWhaleActivity() {
         let volume = parseFloat(data.quoteVolume);
 
         let thresholdChange = -3;
-        let thresholdVolume = volume > 100000000 ? 5000000 : 1000000; // 5 مليون للعملات الكبيرة، 1 مليون للصغيرة
+        let thresholdVolume = volume > 100000000 ? 5000000 : 1000000;
+        let now = Date.now();
+        let savedTime = localStorage.getItem(symbol);
 
         if (priceChange < thresholdChange && volume > thresholdVolume) {
-            showAlert(`${symbol} 🔥 انخفاض ${priceChange}% وتجميع الحيتان!`);
-            localStorage.setItem(symbol, Date.now());
+            if (!savedTime) {
+                localStorage.setItem(symbol, now);
+            }
+            showAlert(symbol, `🔥 انخفاض ${priceChange}% وتجميع الحيتان!`);
+        } else if (savedTime && now - savedTime < 86400000) {
+            showAlert(symbol, `⚠️ انتباه! الحيتان تتراجع من ${symbol}`);
         }
     });
     
+    updateAlertTimes();
     removeExpiredAlerts(symbols);
 }
 
-function showAlert(message) {
+function showAlert(symbol, message) {
     let alertContainer = document.getElementById("alertContainer");
     let alertBox = document.createElement("div");
     alertBox.className = "alertBox";
-    alertBox.innerHTML = `${message} <button onclick='this.parentElement.remove()'>×</button>`;
+    alertBox.setAttribute("data-symbol", symbol);
+    alertBox.innerHTML = `${message} <span class='time-elapsed'></span> <button onclick='this.parentElement.remove()'>×</button>`;
     alertContainer.appendChild(alertBox);
 }
 
@@ -62,17 +70,30 @@ function showError(message) {
     setTimeout(() => errorContainer.innerHTML = "", 5000);
 }
 
+function updateAlertTimes() {
+    let now = Date.now();
+    document.querySelectorAll(".alertBox").forEach(alertBox => {
+        let symbol = alertBox.getAttribute("data-symbol");
+        let savedTime = localStorage.getItem(symbol);
+        if (savedTime) {
+            let elapsed = Math.floor((now - savedTime) / 60000);
+            let timeText = elapsed < 60 ? `${elapsed} دقيقة` : `${Math.floor(elapsed / 60)} ساعة`;
+            if (elapsed >= 1440) timeText = "24 ساعة";
+            alertBox.querySelector(".time-elapsed").textContent = ` منذ ${timeText}`;
+        }
+    });
+}
+
 function removeExpiredAlerts(symbols) {
     let now = Date.now();
     let alertContainer = document.getElementById("alertContainer");
-    
     symbols.forEach(symbol => {
         let savedTime = localStorage.getItem(symbol);
         if (savedTime && (now - savedTime > 86400000)) {
             localStorage.removeItem(symbol);
             let alertBoxes = [...alertContainer.getElementsByClassName("alertBox")];
             alertBoxes.forEach(alertBox => {
-                if (alertBox.innerHTML.includes(symbol)) {
+                if (alertBox.getAttribute("data-symbol") === symbol) {
                     alertBox.remove();
                 }
             });
@@ -82,3 +103,4 @@ function removeExpiredAlerts(symbols) {
 
 checkWhaleActivity();
 setInterval(checkWhaleActivity, 60000);
+setInterval(updateAlertTimes, 60000);
